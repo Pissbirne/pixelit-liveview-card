@@ -1,0 +1,11 @@
+{
+  "domain": "pixelit_liveview",
+  "name": "PixelIt Liveview",
+  "version": "1.0.0",
+  "requirements": [],
+  "dependencies": [],
+  "codeowners": ["@dirkk"],
+  "config_flow": false,
+  "iot_class": "local_push",
+  "documentation": "https://github.com/pixelit-project/PixelIt"
+}
