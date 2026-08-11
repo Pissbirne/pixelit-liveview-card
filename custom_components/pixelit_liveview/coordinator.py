@@ -6,6 +6,15 @@ publishes the latest liveview hex string + parsed pixels to HA.
 Uses aiohttp (bundled with HA) for the WebSocket client — no external
 dependency. The state is written directly via hass.states.async_set, which
 works without a config flow or platform registration.
+
+Stale-connection watchdog: PixelIt only pushes liveview data when the pixel
+checksum changes (i.e. when the clock/display actually updates). If the display
+content changes in the WebUI, the active screen can freeze and the WebSocket
+connection can go "stale" — still open (so HA shows "connected") but no longer
+receiving updates. Only a fresh connection (e.g. HA restart) recovers it. To
+make this self-healing, we track whether data has ever arrived on the current
+connection; if it has but then stops for RECEIVE_TIMEOUT seconds, we force a
+reconnect. A reconnect opens a new connection exactly like an HA restart would.
 """
 from __future__ import annotations
 
@@ -20,6 +29,10 @@ from homeassistant.core import HomeAssistant
 from .const import DOMAIN, SENSOR_ENTITY_ID, SENSOR_NAME
 
 _LOGGER = logging.getLogger(__name__)
+
+# If we previously received liveview data on the current connection but then
+# nothing arrives within this window, treat the connection as stale and reconnect.
+RECEIVE_TIMEOUT = 15.0
 
 
 class PixelItLiveviewCoordinator:
@@ -37,6 +50,7 @@ class PixelItLiveviewCoordinator:
         self._connected = False
         self._hex = ""
         self._pixels: list[dict] = []
+        self._had_data = False
 
     @property
     def ws_url(self) -> str:
@@ -77,19 +91,7 @@ class PixelItLiveviewCoordinator:
         try:
             while True:
                 try:
-                    async with session.ws_connect(self.ws_url) as ws:
-                        self._ws = ws
-                        self._connected = True
-                        self._write_state()
-                        _LOGGER.debug("Connected to %s", self.ws_url)
-                        async for message in ws:
-                            if message.type == aiohttp.WSMsgType.TEXT:
-                                self._handle_message(message.data)
-                            elif message.type in (
-                                aiohttp.WSMsgType.CLOSED,
-                                aiohttp.WSMsgType.ERROR,
-                            ):
-                                break
+                    await self._run_connection(session)
                 except asyncio.CancelledError:
                     raise
                 except Exception as err:  # noqa: BLE001
@@ -97,10 +99,40 @@ class PixelItLiveviewCoordinator:
                 finally:
                     self._ws = None
                     self._connected = False
+                    self._had_data = False
                     self._write_state()
                 await asyncio.sleep(5)
         finally:
             await session.close()
+
+    async def _run_connection(self, session: aiohttp.ClientSession) -> None:
+        """Run a single WebSocket connection until it is stale, closed, or errors."""
+        async with session.ws_connect(self.ws_url) as ws:
+            self._ws = ws
+            self._connected = True
+            self._had_data = False
+            self._write_state()
+            _LOGGER.debug("Connected to %s", self.ws_url)
+            while True:
+                try:
+                    msg = await asyncio.wait_for(ws.receive(), timeout=RECEIVE_TIMEOUT)
+                except asyncio.TimeoutError:
+                    if self._had_data:
+                        _LOGGER.warning(
+                            "PixelIt connection stale (no data for %.0fs), reconnecting", RECEIVE_TIMEOUT
+                        )
+                        raise
+                    # No data has ever arrived on this connection — PixelIt may
+                    # legitimately be idle. Keep waiting instead of hammering it.
+                    continue
+                if msg.type == aiohttp.WSMsgType.TEXT:
+                    self._handle_message(msg.data)
+                elif msg.type in (
+                    aiohttp.WSMsgType.CLOSED,
+                    aiohttp.WSMsgType.ERROR,
+                    aiohttp.WSMsgType.CLOSE,
+                ):
+                    break
 
     def _handle_message(self, message) -> None:
         if not isinstance(message, str):
@@ -115,6 +147,7 @@ class PixelItLiveviewCoordinator:
         self._hex = hex_str
         self._pixels = self._parse_hex(hex_str)
         self._connected = True
+        self._had_data = True
         self._write_state()
 
     def _parse_hex(self, hex_str: str) -> list[dict]:
