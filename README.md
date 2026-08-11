@@ -13,6 +13,8 @@ Unlike a naive direct-connection approach, this card reads the display content *
 - **Visual editor** — Full configuration via UI, no YAML needed
 - **Multi-language** — German, English (auto-detects HA language)
 
+![PixelIt Liveview Card in the dashboard](images/screenshot-dashboard.png)
+
 ## Requirements
 
 This card needs a small companion **integration** (`pixelit_liveview`) installed on Home Assistant. The integration connects to your PixelIt's WebSocket (port 81) and exposes the live content as a sensor. Without it the card has nothing to read.
@@ -61,6 +63,8 @@ The integration is **not yet in HACS**, so install it manually:
 
 ### Visual Editor
 Add a new card and search for **"PixelIt Liveview"**. Select the sensor (`sensor.pixelit_liveview`) and set the matrix size. Configure display options in the editor.
+
+![PixelIt Liveview Card editor](images/screenshot-editor.png)
 
 ### YAML
 ```yaml
