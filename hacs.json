@@ -1,6 +1,4 @@
 {
-  "name": "PixelIt Liveview Card",
-  "filename": "pixelit-liveview-card.js",
-  "render_readme": true,
-  "content_in_root": true
+  "name": "PixelIt Liveview",
+  "render_readme": true
 }

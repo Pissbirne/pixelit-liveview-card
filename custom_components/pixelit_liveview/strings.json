@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "PixelIt Liveview",
+        "description": "Verbinde die Karte mit deinem PixelIt-Display. Die Werte findest du in der PixelIt-WebUI (Standard: IP des Displays, Port 81, Matrixgröße).",
+        "data": {
+          "host": "IP-Adresse des PixelIt-Displays",
+          "port": "WebSocket-Port (Standard: 81)",
+          "width": "Matrix-Breite in Pixeln (z.B. 32)",
+          "height": "Matrix-Höhe in Pixeln (z.B. 8)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Keine Verbindung möglich. Prüfe IP-Adresse und Port."
+    },
+    "abort": {
+      "already_configured": "Dieses PixelIt ist bereits konfiguriert."
+    }
+  }
+}
