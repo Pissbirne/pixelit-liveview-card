@@ -12,8 +12,8 @@ Unlike a naive direct-connection approach, this reads the display content **thro
 - **Automatic card registration** — The Lovelace card is registered as a resource automatically, no manual setup
 - **Config flow** — Configure IP, port and matrix size via the HA UI, no YAML editing
 - **Theme-compatible** — Transparent background, adapts to any HA theme (including glass/Frosted Glass themes)
-- **Connection status badge** — Shows "Verbunden" / "Getrennt" (connected/disconnected)
-- **Multi-language** — German, English (auto-detects HA language)
+- **Connection status badge** — Shows "Connected" / "Disconnected"
+- **Multi-language** — English and German UI (auto-detects HA language)
 
 ![PixelIt Liveview Card in the dashboard](images/screenshot-dashboard.png)
 
@@ -24,7 +24,7 @@ Unlike a naive direct-connection approach, this reads the display content **thro
 1. Add this repo as a custom repository in HACS (type: **Integration**)
 2. Install
 3. Restart Home Assistant
-4. **Einstellungen → Geräte & Dienste → Integration hinzufügen → PixelIt Liveview**
+4. **Settings → Devices & Services → Add Integration → PixelIt Liveview**
 5. Enter the PixelIt IP, port and matrix size
 6. Add the card to your dashboard (it's auto-registered as a resource)
 
@@ -32,7 +32,7 @@ Unlike a naive direct-connection approach, this reads the display content **thro
 
 1. Copy the `custom_components/pixelit_liveview/` folder to your `config/custom_components/`
 2. Restart Home Assistant
-3. **Einstellungen → Geräte & Dienste → Integration hinzufügen → PixelIt Liveview**
+3. **Settings → Devices & Services → Add Integration → PixelIt Liveview**
 4. Enter the PixelIt IP, port and matrix size
 5. Add the card to your dashboard
 
@@ -42,10 +42,12 @@ The integration is configured via the **config flow** (HA UI), no YAML needed. W
 
 | Field | Description |
 |-------|-------------|
-| **IP-Adresse des PixelIt-Displays** | The IP of your PixelIt (e.g. `192.168.178.8`) |
-| **WebSocket-Port** | Default `81` |
-| **Matrix-Breite** | Width in pixels (e.g. `32`) |
-| **Matrix-Höhe** | Height in pixels (e.g. `8`) |
+| **PixelIt display IP address** | The IP of your PixelIt (e.g. `192.168.178.8`) |
+| **WebSocket port** | Default `81` |
+| **Matrix width in pixels** | Width in pixels (e.g. `32`) |
+| **Matrix height in pixels** | Height in pixels (e.g. `8`) |
+
+> Note: The labels are shown in German if your Home Assistant language is German, otherwise in English.
 
 ### Card Options
 
