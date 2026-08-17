@@ -1,10 +1,12 @@
 {
   "domain": "pixelit_liveview",
   "name": "PixelIt Liveview",
-  "version": "1.0.1",
+  "version": "1.1.1",
   "requirements": [],
   "dependencies": [],
-  "codeowners": ["@Pissbirne"],
+  "codeowners": [
+    "@Pissbirne"
+  ],
   "config_flow": true,
   "iot_class": "local_push",
   "documentation": "https://github.com/Pissbirne/pixelit-liveview-card",

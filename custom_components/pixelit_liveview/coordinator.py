@@ -60,7 +60,11 @@ class PixelItLiveviewCoordinator:
     async def async_start(self) -> None:
         """Start the background WebSocket loop."""
         if self._task is None:
-            self._task = self._hass.async_create_task(self._ws_loop())
+            # Use asyncio.ensure_future instead of hass.async_create_task so this
+            # long-running background task is NOT counted by HA's bootstrap
+            # setup-completion check. Otherwise HA waits the full 300s timeout on
+            # the endless _ws_loop task at every startup, delaying boot by ~5 min.
+            self._task = asyncio.ensure_future(self._ws_loop())
 
     async def async_stop(self) -> None:
         """Stop the background WebSocket loop."""
