@@ -105,7 +105,13 @@ let PixelItLiveviewCard=class extends re{
         for(let x=0;x<width;x++){
           const idx=y*width+x;
           const p=data.pixels[idx];
-          const bg=p?("rgb("+p.r+","+p.g+","+p.b+")"):"transparent";
+          // Lit pixels get their real color; unlit pixels get a fully OPAQUE
+          // dark fill. Semi-transparent (rgba 0.55) still lets the theme's
+          // backdrop-filter blur bleed through, making unlit cells alternate
+          // between black and purple depending on background position.
+          // Opaque black breaks the theme bleed completely while the card
+          // border/glass effect remains via the transparent .plc-inner.
+          const bg=p?("rgb("+p.r+","+p.g+","+p.b+")"):"#000";
           cells.push(V`<div class="px" style="background:${bg};"></div>`);
         }
       }
@@ -122,7 +128,7 @@ ha-card{background:transparent;box-shadow:none;border:none;}
 .plc-status{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:500;}
 .plc-status.ok{background:rgba(76,175,80,0.2);color:var(--success-color,#4caf50);}
 .plc-status.err{background:rgba(244,67,54,0.2);color:var(--error-color,#f44336);}
-.plc-grid{display:grid;width:100%;align-self:stretch;}
+.plc-grid{display:grid;width:100%;align-self:stretch;background:#000;border-radius:4px;overflow:hidden;}
 .px{aspect-ratio:1/1;border-radius:1px;}
 .plc-empty{font-size:12px;color:var(--secondary-text-color);padding:8px 0;}
 `;
