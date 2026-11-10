@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from collections.abc import Callable
 from contextlib import suppress
 
@@ -19,6 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 # If we previously received liveview data on the current connection but then
 # nothing arrives within this window, treat the connection as stale and reconnect.
 RECEIVE_TIMEOUT = 15.0
+HEX_FRAME = re.compile(r"[0-9a-fA-F]+")
 
 
 class PixelItLiveviewCoordinator:
@@ -35,7 +37,6 @@ class PixelItLiveviewCoordinator:
         self._task: asyncio.Task | None = None
         self._connected = False
         self._hex = ""
-        self._pixels: list[dict] = []
         self._had_data = False
 
     @property
@@ -74,7 +75,6 @@ class PixelItLiveviewCoordinator:
             "width": self._width,
             "height": self._height,
             "hex": self._hex,
-            "pixels": self._pixels,
         }
 
     def _publish(self) -> None:
@@ -89,9 +89,9 @@ class PixelItLiveviewCoordinator:
             except (aiohttp.ClientError, OSError, TimeoutError) as err:
                 _LOGGER.debug("PixelIt WebSocket error for %s: %s", self._host, err)
             finally:
-                self._connected = False
-                self._had_data = False
-                self._publish()
+                if self._connected:
+                    self._connected = False
+                    self._publish()
             await asyncio.sleep(5)
 
     async def _run_connection(self) -> None:
@@ -106,8 +106,8 @@ class PixelItLiveviewCoordinator:
                     msg = await asyncio.wait_for(ws.receive(), timeout=RECEIVE_TIMEOUT)
                 except asyncio.TimeoutError:
                     if self._had_data:
-                        _LOGGER.warning(
-                            "PixelIt connection stale (no data for %.0fs), reconnecting", RECEIVE_TIMEOUT
+                        _LOGGER.debug(
+                            "PixelIt sent no frames for %.0fs, reconnecting", RECEIVE_TIMEOUT
                         )
                         raise
                     # No data has ever arrived on this connection — PixelIt may
@@ -131,27 +131,12 @@ class PixelItLiveviewCoordinator:
             return
         if not isinstance(obj, dict) or not isinstance(obj.get("liveview"), str):
             return
-        hex_str = obj["liveview"]
-        self._hex = hex_str
-        self._pixels = self._parse_hex(hex_str)
-        self._connected = True
-        self._had_data = True
-        self._publish()
+        frame = obj["liveview"][: self._width * self._height * 6]
+        frame = frame[: len(frame) - len(frame) % 6]
+        if not HEX_FRAME.fullmatch(frame):
+            return
 
-    def _parse_hex(self, hex_str: str) -> list[dict]:
-        """Parse the liveview hex string into a list of {r,g,b} pixels."""
-        pixels: list[dict] = []
-        expected = self._width * self._height * 6
-        s = hex_str[:expected] if len(hex_str) >= expected else hex_str
-        for i in range(0, len(s), 6):
-            chunk = s[i : i + 6]
-            if len(chunk) < 6:
-                break
-            try:
-                r = int(chunk[0:2], 16)
-                g = int(chunk[2:4], 16)
-                b = int(chunk[4:6], 16)
-            except ValueError:
-                continue
-            pixels.append({"r": r, "g": g, "b": b})
-        return pixels
+        self._had_data = True
+        if frame != self._hex:
+            self._hex = frame
+            self._publish()

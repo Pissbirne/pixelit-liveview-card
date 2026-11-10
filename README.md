@@ -51,13 +51,15 @@ The integration is configured via the **config flow** (HA UI), no YAML needed. W
 
 > Note: The labels are shown in German if your Home Assistant language is German, otherwise in English.
 
-Each display has its own sensor. The first uses `sensor.pixelit_liveview` by default. For additional displays, select the corresponding sensor in the card editor. Frame attributes remain available to the card while Recorder excludes them from history.
+Each display has its own sensor. Home Assistant derives new entity IDs from the display name. Registered entity IDs stay the same. The card editor preselects a PixelIt sensor when available. If you have several displays, choose the matching sensor. The live frame is sent as a compact `hex` attribute and excluded from Recorder history. The card also supports the older `pixels` attribute when connected to an earlier integration version.
+
+To change the address, port, or dimensions, open the PixelIt Liveview integration entry and choose **Reconfigure**. Existing cards retain their sensor assignment.
 
 ### Card Options
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `entity` | string | `sensor.pixelit_liveview` | Sensor exposing the liveview data |
+| `entity` | string | First available PixelIt sensor in the card picker | Sensor exposing the liveview data |
 | `width` | int | 32 | Matrix width in pixels |
 | `height` | int | 8 | Matrix height in pixels |
 | `gap` | int | 1 | Gap between pixels (px) |
@@ -72,8 +74,8 @@ Each display has its own sensor. The first uses `sensor.pixelit_liveview` by def
 
 1. The integration opens a WebSocket to `ws://<pixelit-ip>:81`.
 2. PixelIt streams its live pixels as `{"liveview":"<hex>"}` (~6 hex chars per pixel, row by row).
-3. The integration parses the hex into `{r,g,b}` pixels and writes them to the `sensor.pixelit_liveview` attributes.
-4. The card reads the sensor via HA and renders the pixels as a grid, stretching to fill the card width while keeping pixels square.
+3. The integration validates the frame and publishes it as the sensor’s `hex` attribute.
+4. The card decodes the frame and renders the pixels as a grid, stretching to fill the card width while keeping pixels square.
 
 ## License
 

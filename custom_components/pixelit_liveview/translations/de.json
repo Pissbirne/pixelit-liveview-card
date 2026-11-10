@@ -10,10 +10,21 @@
           "width": "Matrix-Breite in Pixeln (z.B. 32)",
           "height": "Matrix-Höhe in Pixeln (z.B. 8)"
         }
+      },
+      "reconfigure": {
+        "title": "PixelIt neu konfigurieren",
+        "description": "Ändere die Adresse, den Port oder die Matrixgröße des Displays.",
+        "data": {
+          "host": "IP-Adresse des PixelIt-Displays",
+          "port": "WebSocket-Port (Standard: 81)",
+          "width": "Matrix-Breite in Pixeln (z.B. 32)",
+          "height": "Matrix-Höhe in Pixeln (z.B. 8)"
+        }
       }
     },
     "error": {
-      "cannot_connect": "Keine Verbindung möglich. Prüfe IP-Adresse und Port."
+      "cannot_connect": "Keine Verbindung möglich. Prüfe IP-Adresse und Port.",
+      "invalid_host": "Gib einen Hostnamen oder eine IP-Adresse ohne URL oder Port ein."
     },
     "abort": {
       "already_configured": "Dieses PixelIt ist bereits konfiguriert."

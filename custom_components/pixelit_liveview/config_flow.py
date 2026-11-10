@@ -45,25 +45,43 @@ class PixelItLiveviewConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict | None = None
     ) -> ConfigFlowResult:
         """Handle the initial step."""
+        return await self._async_configure("user", user_input)
+
+    async def async_step_reconfigure(
+        self, user_input: dict | None = None
+    ) -> ConfigFlowResult:
+        """Update the display address or dimensions on the existing entry."""
+        return await self._async_configure("reconfigure", user_input)
+
+    async def _async_configure(
+        self, step_id: str, user_input: dict | None
+    ) -> ConfigFlowResult:
+        entry = self._get_reconfigure_entry() if step_id == "reconfigure" else None
         errors: dict[str, str] = {}
 
         if user_input is not None:
             host = user_input[CONF_HOST].strip()
             port = user_input[CONF_PORT]
-            await self.async_set_unique_id(host)
-            self._abort_if_unique_id_configured()
+            if not host or any(char in host for char in "/?#@") or any(
+                char.isspace() for char in host
+            ):
+                errors[CONF_HOST] = "invalid_host"
+            else:
+                existing = await self.async_set_unique_id(host)
+                if existing is not None and (
+                    entry is None or existing.entry_id != entry.entry_id
+                ):
+                    return self.async_abort(reason="already_configured")
 
-            if await _test_connection(self.hass, host, port):
-                return self.async_create_entry(
-                    title=host,
-                    data={
-                        CONF_HOST: host,
-                        CONF_PORT: port,
-                        CONF_WIDTH: user_input[CONF_WIDTH],
-                        CONF_HEIGHT: user_input[CONF_HEIGHT],
-                    },
-                )
-            errors["base"] = "cannot_connect"
+                if await _test_connection(self.hass, host, port):
+                    data = {**user_input, CONF_HOST: host}
+                    if entry is None:
+                        return self.async_create_entry(title=host, data=data)
+                    self.hass.config_entries.async_update_entry(entry, unique_id=host)
+                    return self.async_update_reload_and_abort(
+                        entry, title=host, data_updates=data
+                    )
+                errors["base"] = "cannot_connect"
 
         schema = vol.Schema(
             {
@@ -80,7 +98,9 @@ class PixelItLiveviewConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             }
         )
         return self.async_show_form(
-            step_id="user",
-            data_schema=self.add_suggested_values_to_schema(schema, user_input),
+            step_id=step_id,
+            data_schema=self.add_suggested_values_to_schema(
+                schema, user_input if user_input is not None else entry.data if entry else None
+            ),
             errors=errors,
         )

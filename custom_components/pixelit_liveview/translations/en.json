@@ -10,10 +10,21 @@
           "width": "Matrix width in pixels",
           "height": "Matrix height in pixels"
         }
+      },
+      "reconfigure": {
+        "title": "Reconfigure PixelIt",
+        "description": "Change the display address, port or matrix dimensions.",
+        "data": {
+          "host": "PixelIt host",
+          "port": "WebSocket port",
+          "width": "Matrix width in pixels",
+          "height": "Matrix height in pixels"
+        }
       }
     },
     "error": {
-      "cannot_connect": "Could not connect. Check the host and port."
+      "cannot_connect": "Could not connect. Check the host and port.",
+      "invalid_host": "Enter a hostname or IP address without a URL or port."
     },
     "abort": {
       "already_configured": "This PixelIt is already configured."

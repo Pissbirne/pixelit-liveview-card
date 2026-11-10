@@ -49,12 +49,25 @@ PLEditor=e([ce(EDITOR_TAG)],PLEditor);
 
 // ===== Main Card =====
 let PixelItLiveviewCard=class extends re{
-  constructor(){super(...arguments);this._tick=0;}
   setConfig(config){if(!config)throw new Error("Invalid configuration");this._config={title:"",entity:"sensor.pixelit_liveview",width:32,height:8,gap:1,show_header:true,show_status:true,show_pixels:true,...config,type:config.type||CARD_TYPE};}
   getCardSize(){return 3;}
   getGridOptions(){return{columns:12,rows:"auto",min_columns:4,min_rows:2};}
   static getConfigElement(){return document.createElement(EDITOR_TAG);}
-  static getStubConfig(){return{type:CARD_TYPE,title:"",entity:"sensor.pixelit_liveview",width:32,height:8,gap:1,show_header:true,show_status:true,show_pixels:true};}
+  static getStubConfig(hass){
+    const entity=Object.values(hass?.entities??{}).find(
+      entry=>entry.platform==="pixelit_liveview"&&hass.states?.[entry.entity_id]
+    )?.entity_id;
+    return{type:CARD_TYPE,title:"",entity:entity??"sensor.pixelit_liveview",width:32,height:8,gap:1,show_header:true,show_status:true,show_pixels:true};
+  }
+
+  shouldUpdate(changedProperties){
+    if(changedProperties.has("_config")||!changedProperties.has("hass"))return true;
+    const previousHass=changedProperties.get("hass");
+    if(!previousHass||!this.hass)return true;
+    const entity=this._config?.entity;
+    return previousHass.states?.[entity]!==this.hass.states?.[entity]
+      ||getLang(previousHass)!==getLang(this.hass);
+  }
 
   _getData(){
     const entity=this._config.entity;
@@ -100,7 +113,7 @@ let PixelItLiveviewCard=class extends re{
     const hasPixels=data&&data.pixels&&data.pixels.length>0;
     const gridStyle="grid-template-columns:repeat("+width+", 1fr);grid-template-rows:repeat("+height+", 1fr);gap:"+gap+"px;width:100%;";
     const cells=[];
-    if(data&&data.pixels){
+    if(cfg.show_pixels&&data?.pixels){
       for(let y=0;y<height;y++){
         for(let x=0;x<width;x++){
           const idx=y*width+x;
@@ -134,7 +147,6 @@ ha-card{background:transparent;box-shadow:none;border:none;}
 `;
 e([pe({attribute:false})],PixelItLiveviewCard.prototype,"hass",void 0);
 e([ue()],PixelItLiveviewCard.prototype,"_config",void 0);
-e([ue()],PixelItLiveviewCard.prototype,"_tick",void 0);
 PixelItLiveviewCard=e([ce(CARD_NAME)],PixelItLiveviewCard);
 
 window.customCards=window.customCards||[];
