@@ -1,32 +1,18 @@
-"""DataUpdateCoordinator for the PixelIt Liveview integration.
-
-Maintains a persistent WebSocket connection to the PixelIt display and
-publishes the latest liveview hex string + parsed pixels to HA.
-
-Uses aiohttp (bundled with HA) for the WebSocket client — no external
-dependency. The state is written directly via hass.states.async_set, which
-works without a config flow or platform registration.
-
-Stale-connection watchdog: PixelIt only pushes liveview data when the pixel
-checksum changes (i.e. when the clock/display actually updates). If the display
-content changes in the WebUI, the active screen can freeze and the WebSocket
-connection can go "stale" — still open (so HA shows "connected") but no longer
-receiving updates. Only a fresh connection (e.g. HA restart) recovers it. To
-make this self-healing, we track whether data has ever arrived on the current
-connection; if it has but then stops for RECEIVE_TIMEOUT seconds, we force a
-reconnect. A reconnect opens a new connection exactly like an HA restart would.
-"""
+"""Persistent WebSocket client for PixelIt Liveview."""
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
+from collections.abc import Callable
+from contextlib import suppress
 
 import aiohttp
+from yarl import URL
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-
-from .const import DOMAIN, SENSOR_ENTITY_ID, SENSOR_NAME
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,12 +26,12 @@ class PixelItLiveviewCoordinator:
 
     def __init__(self, hass: HomeAssistant, host: str, port: int, width: int, height: int):
         """Initialize."""
-        self._hass = hass
+        self._session = async_get_clientsession(hass)
+        self.on_update: Callable[[], None] | None = None
         self._host = host
         self._port = port
         self._width = width
         self._height = height
-        self._ws = None
         self._task: asyncio.Task | None = None
         self._connected = False
         self._hex = ""
@@ -53,69 +39,67 @@ class PixelItLiveviewCoordinator:
         self._had_data = False
 
     @property
-    def ws_url(self) -> str:
-        """WebSocket URL."""
-        return f"ws://{self._host}:{self._port}"
+    def ws_url(self) -> URL:
+        """Build the WebSocket URL, including IPv6 support."""
+        return URL.build(scheme="ws", host=self._host, port=self._port)
 
-    async def async_start(self) -> None:
-        """Start the background WebSocket loop."""
-        if self._task is None:
-            # Use asyncio.ensure_future instead of hass.async_create_task so this
-            # long-running background task is NOT counted by HA's bootstrap
-            # setup-completion check. Otherwise HA waits the full 300s timeout on
-            # the endless _ws_loop task at every startup, delaying boot by ~5 min.
-            self._task = asyncio.ensure_future(self._ws_loop())
+    def async_start(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        """Start an entry-owned task without delaying HA startup."""
+        self._task = entry.async_create_background_task(
+            hass, self._ws_loop(), "pixelit_liveview_websocket"
+        )
 
     async def async_stop(self) -> None:
-        """Stop the background WebSocket loop."""
-        if self._task:
+        """Wait for the WebSocket context to close."""
+        if self._task is not None:
             self._task.cancel()
+            with suppress(asyncio.CancelledError):
+                await self._task
             self._task = None
-        if self._ws:
-            await self._ws.close()
-            self._ws = None
 
-    def _write_state(self) -> None:
-        """Write the sensor state + attributes directly to HA."""
-        state = "connected" if self._connected else "disconnected"
-        attrs = {
-            "friendly_name": SENSOR_NAME,
-            "icon": "mdi:led-strip-variant",
+    def clear_listener(self) -> None:
+        """Detach the sensor callback."""
+        self.on_update = None
+
+    @property
+    def connected(self) -> bool:
+        """Return the current connection status."""
+        return self._connected
+
+    @property
+    def attributes(self) -> dict:
+        """Return the latest frame."""
+        return {
             "connected": self._connected,
             "width": self._width,
             "height": self._height,
             "hex": self._hex,
             "pixels": self._pixels,
         }
-        self._hass.states.async_set(SENSOR_ENTITY_ID, state, attrs)
+
+    def _publish(self) -> None:
+        if self.on_update is not None:
+            self.on_update()
 
     async def _ws_loop(self) -> None:
         """Keep the WebSocket connected and read liveview messages."""
-        session = aiohttp.ClientSession()
-        try:
-            while True:
-                try:
-                    await self._run_connection(session)
-                except asyncio.CancelledError:
-                    raise
-                except Exception as err:  # noqa: BLE001
-                    _LOGGER.warning("PixelIt WebSocket error: %s", err)
-                finally:
-                    self._ws = None
-                    self._connected = False
-                    self._had_data = False
-                    self._write_state()
-                await asyncio.sleep(5)
-        finally:
-            await session.close()
+        while True:
+            try:
+                await self._run_connection()
+            except (aiohttp.ClientError, OSError, TimeoutError) as err:
+                _LOGGER.debug("PixelIt WebSocket error for %s: %s", self._host, err)
+            finally:
+                self._connected = False
+                self._had_data = False
+                self._publish()
+            await asyncio.sleep(5)
 
-    async def _run_connection(self, session: aiohttp.ClientSession) -> None:
+    async def _run_connection(self) -> None:
         """Run a single WebSocket connection until it is stale, closed, or errors."""
-        async with session.ws_connect(self.ws_url) as ws:
-            self._ws = ws
+        async with self._session.ws_connect(self.ws_url) as ws:
             self._connected = True
             self._had_data = False
-            self._write_state()
+            self._publish()
             _LOGGER.debug("Connected to %s", self.ws_url)
             while True:
                 try:
@@ -152,7 +136,7 @@ class PixelItLiveviewCoordinator:
         self._pixels = self._parse_hex(hex_str)
         self._connected = True
         self._had_data = True
-        self._write_state()
+        self._publish()
 
     def _parse_hex(self, hex_str: str) -> list[dict]:
         """Parse the liveview hex string into a list of {r,g,b} pixels."""

@@ -1,23 +1,17 @@
-"""Config flow for the PixelIt Liveview integration.
-
-Lets the user configure the PixelIt display (IP, port, matrix size) through the
-Home Assistant UI (Einstellungen → Geräte & Dienste → Integration hinzufügen)
-instead of editing configuration.yaml. Includes a connection test so the user
-gets immediate feedback.
-
-Field labels are localized via strings.json / translations (DE/EN).
-"""
+"""Configure a PixelIt display through Home Assistant."""
 from __future__ import annotations
 
-import logging
+import asyncio
 
 import aiohttp
 import voluptuous as vol
+from yarl import URL
 
 from homeassistant import config_entries
+from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
-from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
     CONF_HEIGHT,
@@ -29,18 +23,16 @@ from .const import (
     DOMAIN,
 )
 
-_LOGGER = logging.getLogger(__name__)
-
 
 async def _test_connection(hass: HomeAssistant, host: str, port: int) -> bool:
-    """Try to open a WebSocket to the PixelIt to verify the connection."""
-    url = f"ws://{host}:{port}"
+    """Verify the PixelIt WebSocket handshake within five seconds."""
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.ws_connect(url, timeout=5) as ws:
-                await ws.close()
-        return True
-    except Exception:  # noqa: BLE001
+        url = URL.build(scheme="ws", host=host, port=port)
+        session = async_get_clientsession(hass)
+        async with asyncio.timeout(5):
+            async with session.ws_connect(url):
+                return True
+    except (aiohttp.ClientError, OSError, TimeoutError, ValueError):
         return False
 
 
@@ -51,12 +43,12 @@ class PixelItLiveviewConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(
         self, user_input: dict | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle the initial step."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            host = user_input[CONF_HOST]
+            host = user_input[CONF_HOST].strip()
             port = user_input[CONF_PORT]
             await self.async_set_unique_id(host)
             self._abort_if_unique_id_configured()
@@ -73,15 +65,22 @@ class PixelItLiveviewConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
             errors["base"] = "cannot_connect"
 
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_HOST, default=DEFAULT_HOST): str,
+                vol.Required(CONF_PORT, default=DEFAULT_PORT): vol.All(
+                    int, vol.Range(min=1, max=65535)
+                ),
+                vol.Required(CONF_WIDTH, default=DEFAULT_WIDTH): vol.All(
+                    int, vol.Range(min=1)
+                ),
+                vol.Required(CONF_HEIGHT, default=DEFAULT_HEIGHT): vol.All(
+                    int, vol.Range(min=1)
+                ),
+            }
+        )
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_HOST, default=DEFAULT_HOST): str,
-                    vol.Required(CONF_PORT, default=DEFAULT_PORT): int,
-                    vol.Required(CONF_WIDTH, default=DEFAULT_WIDTH): int,
-                    vol.Required(CONF_HEIGHT, default=DEFAULT_HEIGHT): int,
-                }
-            ),
+            data_schema=self.add_suggested_values_to_schema(schema, user_input),
             errors=errors,
         )

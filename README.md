@@ -19,9 +19,9 @@ Unlike a naive direct-connection approach, this reads the display content **thro
 
 ## Installation
 
-### HACS (recommended)
+### Marketplace / HACS (recommended)
 
-1. Add this repo as a custom repository in HACS (type: **Integration**)
+1. Add this repo as a custom repository in Marketplace (HACS on earlier Home Assistant versions) as an **Integration**
 2. Install
 3. Restart Home Assistant
 4. **Settings → Devices & Services → Add Integration → PixelIt Liveview**
@@ -36,6 +36,8 @@ Unlike a naive direct-connection approach, this reads the display content **thro
 4. Enter the PixelIt IP, port and matrix size
 5. Add the card to your dashboard
 
+In storage mode, the integration registers the dashboard resource automatically and updates the old `/local/pixelit-liveview-card.js` resource on upgrade. If your dashboard resources are managed in YAML, set the resource URL to `/pixelit_liveview/pixelit-liveview-card.js` with type `module`.
+
 ## Configuration
 
 The integration is configured via the **config flow** (HA UI), no YAML needed. When you add the integration you are asked for:
@@ -48,6 +50,8 @@ The integration is configured via the **config flow** (HA UI), no YAML needed. W
 | **Matrix height in pixels** | Height in pixels (e.g. `8`) |
 
 > Note: The labels are shown in German if your Home Assistant language is German, otherwise in English.
+
+Each display has its own sensor. The first uses `sensor.pixelit_liveview` by default. For additional displays, select the corresponding sensor in the card editor. Frame attributes remain available to the card while Recorder excludes them from history.
 
 ### Card Options
 

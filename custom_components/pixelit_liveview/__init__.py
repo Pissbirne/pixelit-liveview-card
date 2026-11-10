@@ -1,48 +1,36 @@
-"""PixelIt Liveview integration.
-
-Connects to a PixelIt matrix display's WebSocket (port 81) and exposes the
-current live pixel content as a Home Assistant sensor. The sensor state is a
-short status string; the full liveview hex + parsed pixels live in attributes.
-
-Uses aiohttp (bundled with HA) for the WebSocket client — no external
-dependency. Configured via a config flow (HA UI), not configuration.yaml.
-"""
+"""PixelIt Liveview integration."""
 from __future__ import annotations
 
-import logging
-
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.const import CONF_HOST, CONF_PORT, Platform
 from homeassistant.core import HomeAssistant
 
-from .const import CONF_HEIGHT, CONF_WIDTH, DOMAIN
+from .const import CONF_HEIGHT, CONF_WIDTH, DEFAULT_HEIGHT, DEFAULT_WIDTH
 from .coordinator import PixelItLiveviewCoordinator
 from .frontend import ensure_frontend
 
-_LOGGER = logging.getLogger(__name__)
+type PixelItConfigEntry = ConfigEntry[PixelItLiveviewCoordinator]
+PLATFORMS = (Platform.SENSOR,)
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up the integration from a config entry (created via the HA UI)."""
-    host = entry.data[CONF_HOST]
-    port = entry.data[CONF_PORT]
-    width = entry.data.get(CONF_WIDTH, 32)
-    height = entry.data.get(CONF_HEIGHT, 8)
-
-    coordinator = PixelItLiveviewCoordinator(hass, host, port, width, height)
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
-    await coordinator.async_start()
-
-    # Register the Lovelace card as a frontend resource automatically.
+async def async_setup_entry(hass: HomeAssistant, entry: PixelItConfigEntry) -> bool:
+    """Set up PixelIt from a config entry."""
+    entry.runtime_data = PixelItLiveviewCoordinator(
+        hass,
+        entry.data[CONF_HOST],
+        entry.data[CONF_PORT],
+        entry.data.get(CONF_WIDTH, DEFAULT_WIDTH),
+        entry.data.get(CONF_HEIGHT, DEFAULT_HEIGHT),
+    )
     await ensure_frontend(hass)
-
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    entry.runtime_data.async_start(hass, entry)
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a config entry."""
-    coordinator = hass.data[DOMAIN].get(entry.entry_id)
-    if coordinator:
-        await coordinator.async_stop()
-    hass.data[DOMAIN].pop(entry.entry_id, None)
+async def async_unload_entry(hass: HomeAssistant, entry: PixelItConfigEntry) -> bool:
+    """Unload the sensor and stop the WebSocket client."""
+    if not await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        return False
+    await entry.runtime_data.async_stop()
     return True

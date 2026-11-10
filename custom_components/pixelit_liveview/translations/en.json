@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "PixelIt Liveview",
+        "description": "Connect to your PixelIt display using its host, WebSocket port and matrix dimensions.",
+        "data": {
+          "host": "PixelIt host",
+          "port": "WebSocket port",
+          "width": "Matrix width in pixels",
+          "height": "Matrix height in pixels"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect. Check the host and port."
+    },
+    "abort": {
+      "already_configured": "This PixelIt is already configured."
+    }
+  }
+}

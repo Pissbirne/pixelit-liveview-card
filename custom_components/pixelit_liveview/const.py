@@ -11,4 +11,3 @@ DEFAULT_WIDTH = 32
 DEFAULT_HEIGHT = 8
 
 SENSOR_NAME = "PixelIt Liveview"
-SENSOR_ENTITY_ID = "sensor.pixelit_liveview"

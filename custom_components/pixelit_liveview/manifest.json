@@ -1,14 +1,20 @@
 {
   "domain": "pixelit_liveview",
   "name": "PixelIt Liveview",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "requirements": [],
-  "dependencies": [],
+  "dependencies": [
+    "http"
+  ],
   "codeowners": [
     "@Pissbirne"
   ],
   "config_flow": true,
   "iot_class": "local_push",
   "documentation": "https://github.com/Pissbirne/pixelit-liveview-card",
-  "issue_tracker": "https://github.com/Pissbirne/pixelit-liveview-card/issues"
+  "issue_tracker": "https://github.com/Pissbirne/pixelit-liveview-card/issues",
+  "after_dependencies": [
+    "lovelace"
+  ],
+  "integration_type": "device"
 }
