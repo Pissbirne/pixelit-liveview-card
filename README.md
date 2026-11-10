@@ -51,7 +51,7 @@ The integration is configured via the **config flow** (HA UI), no YAML needed. W
 
 > Note: The labels are shown in German if your Home Assistant language is German, otherwise in English.
 
-Each display has its own sensor. Home Assistant derives new entity IDs from the display name. Registered entity IDs stay the same. The card editor preselects a PixelIt sensor when available. If you have several displays, choose the matching sensor. The live frame is sent as a compact `hex` attribute and excluded from Recorder history. The card also supports the older `pixels` attribute when connected to an earlier integration version.
+Each display has its own sensor. Home Assistant derives new entity IDs from the display name. Registered entity IDs stay the same. The card editor preselects the sensor when exactly one PixelIt sensor is available. If you have several displays, choose the matching sensor. The live frame is sent as a compact `hex` attribute and excluded from Recorder history. The card also supports the older `pixels` attribute when connected to an earlier integration version.
 
 To change the address, port, or dimensions, open the PixelIt Liveview integration entry and choose **Reconfigure**. Existing cards retain their sensor assignment.
 
@@ -59,9 +59,7 @@ To change the address, port, or dimensions, open the PixelIt Liveview integratio
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `entity` | string | First available PixelIt sensor in the card picker | Sensor exposing the liveview data |
-| `width` | int | 32 | Matrix width in pixels |
-| `height` | int | 8 | Matrix height in pixels |
+| `entity` | string | Automatically selected when exactly one PixelIt sensor is available | Sensor exposing the liveview data |
 | `gap` | int | 1 | Gap between pixels (px) |
 | `title` | string | `PixelIt` | Card title |
 | `show_header` | bool | true | Show card title |

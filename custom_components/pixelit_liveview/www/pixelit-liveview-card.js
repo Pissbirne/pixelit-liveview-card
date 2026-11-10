@@ -2,11 +2,12 @@ function e(e,t,i,o){var s,n=arguments.length,a=n<3?t:null===o?o=Object.getOwnPro
 const CARD_NAME="pixelit-liveview-card";
 const CARD_TYPE="custom:"+CARD_NAME;
 const EDITOR_TAG=CARD_NAME+"-editor";
+const PIXELIT_ENTITY_SELECTOR={entity:{filter:[{domain:"sensor",integration:"pixelit_liveview"}]}};
 
 // ===== i18n =====
 const I18N={
-  de:{title:"Titel",entity:"PixelIt-Sensor",width:"Matrix-Breite (Pixel)",height:"Matrix-Höhe (Pixel)",gap:"Abstand zwischen Pixeln (px)",show_header:"Karten-Header anzeigen",show_status:"Verbindungsstatus anzeigen",show_pixels:"Pixel anzeigen",general:"Allgemein",display:"Anzeige",connected:"Verbunden",disconnected:"Getrennt",no_data:"Keine Daten",card_title:"PixelIt Liveview",pixelit_settings:"PixelIt-Einstellungen",display_options:"Anzeige-Optionen",entity_hint:"z.B. sensor.pixelit_liveview"},
-  en:{title:"Title",entity:"PixelIt sensor",width:"Matrix width (pixels)",height:"Matrix height (pixels)",gap:"Gap between pixels (px)",show_header:"Show card header",show_status:"Show connection status",show_pixels:"Show pixels",general:"General",display:"Display",connected:"Connected",disconnected:"Disconnected",no_data:"No data",card_title:"PixelIt Liveview",pixelit_settings:"PixelIt settings",display_options:"Display options",entity_hint:"e.g. sensor.pixelit_liveview"}
+  de:{title:"Titel",entity:"PixelIt-Sensor",width:"Matrix-Breite (Pixel)",height:"Matrix-Höhe (Pixel)",gap:"Abstand zwischen Pixeln (px)",show_header:"Karten-Header anzeigen",show_status:"Verbindungsstatus anzeigen",show_pixels:"Pixel anzeigen",general:"Allgemein",display:"Anzeige",connected:"Verbunden",disconnected:"Getrennt",no_data:"Warte auf Bilddaten",no_entity:"Kein PixelIt-Sensor ausgewählt",missing_entity:"PixelIt-Sensor nicht verfügbar",card_title:"PixelIt Liveview",pixelit_settings:"PixelIt-Einstellungen",display_options:"Anzeige-Optionen"},
+  en:{title:"Title",entity:"PixelIt sensor",width:"Matrix width (pixels)",height:"Matrix height (pixels)",gap:"Gap between pixels (px)",show_header:"Show card header",show_status:"Show connection status",show_pixels:"Show pixels",general:"General",display:"Display",connected:"Connected",disconnected:"Disconnected",no_data:"Waiting for a frame",no_entity:"No PixelIt sensor selected",missing_entity:"PixelIt sensor unavailable",card_title:"PixelIt Liveview",pixelit_settings:"PixelIt settings",display_options:"Display options"}
 };
 function getLang(hass){const lang=(hass.locale?.language||hass.language||"en").split("-")[0];return I18N[lang]?lang:"en";}
 function tr(hass,key){if(!hass)return I18N.en[key]||key;const lang=getLang(hass);return(I18N[lang]&&I18N[lang][key])||I18N.en[key]||key;}
@@ -19,11 +20,22 @@ let PLEditor=class extends re{
   _emit(){this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:this._config},bubbles:true,composed:true}));}
   _patch(patch){this._config={...this._config,...patch};this._emit();}
 
+  _entityChanged(event){
+    const entity=event.detail.value??"";
+    if(entity!==(this._config.entity??""))this._patch({entity});
+  }
+
   render(){
     if(!this._config)return V``;
     const self=this;
     const T=function(key){return tr(self.hass,key);};
-    return V`<div class="editor"><div class="section-head sub"><span>${T("pixelit_settings")}</span></div><label class="text-row"><span class="text-label">${T("entity")}</span><input type="text" class="text-input" placeholder="${T("entity_hint")}" .value=${this._config.entity||""} @input=${function(e){self._patch({entity:e.target.value});}} /></label><div class="row"><label class="number-row"><span class="number-label">${T("width")}</span><input type="number" class="number-input" min="1" max="128" .value=${String(this._config.width??32)} @input=${function(e){const v=parseInt(e.target.value,10);Number.isFinite(v)&&v>0&&self._patch({width:v});}} /></label><label class="number-row"><span class="number-label">${T("height")}</span><input type="number" class="number-input" min="1" max="64" .value=${String(this._config.height??8)} @input=${function(e){const v=parseInt(e.target.value,10);Number.isFinite(v)&&v>0&&self._patch({height:v});}} /></label></div><div class="section-divider"></div><div class="section-head sub"><span>${T("display_options")}</span></div><label class="number-row"><span class="number-label">${T("gap")}</span><input type="number" class="number-input" min="0" max="16" .value=${String(this._config.gap??1)} @input=${function(e){const v=parseInt(e.target.value,10);Number.isFinite(v)&&v>=0&&self._patch({gap:v});}} /></label><label class="toggle-row"><ha-switch .checked=${this._config.show_header??true} @change=${function(e){self._patch({show_header:e.target.checked});}}></ha-switch><span>${T("show_header")}</span></label><label class="toggle-row"><ha-switch .checked=${this._config.show_status??true} @change=${function(e){self._patch({show_status:e.target.checked});}}></ha-switch><span>${T("show_status")}</span></label><label class="toggle-row"><ha-switch .checked=${this._config.show_pixels??true} @change=${function(e){self._patch({show_pixels:e.target.checked});}}></ha-switch><span>${T("show_pixels")}</span></label><div class="section-divider"></div><div class="section-head sub"><span>${T("general")}</span></div><label class="text-row"><span class="text-label">${T("title")}</span><input type="text" class="text-input" placeholder="${T("card_title")}" .value=${this._config.title||""} @input=${function(e){self._patch({title:e.target.value});}} /></label></div>`;
+    return V`<div class="editor"><div class="section-head sub"><span>${T("pixelit_settings")}</span></div><ha-selector
+      .hass=${this.hass}
+      .selector=${PIXELIT_ENTITY_SELECTOR}
+      .label=${T("entity")}
+      .value=${this._config.entity||undefined}
+      @value-changed=${this._entityChanged}
+    ></ha-selector><div class="section-divider"></div><div class="section-head sub"><span>${T("display_options")}</span></div><label class="number-row"><span class="number-label">${T("gap")}</span><input type="number" class="number-input" min="0" max="16" .value=${String(this._config.gap??1)} @input=${function(e){const v=parseInt(e.target.value,10);Number.isFinite(v)&&v>=0&&self._patch({gap:v});}} /></label><label class="toggle-row"><ha-switch .checked=${this._config.show_header??true} @change=${function(e){self._patch({show_header:e.target.checked});}}></ha-switch><span>${T("show_header")}</span></label><label class="toggle-row"><ha-switch .checked=${this._config.show_status??true} @change=${function(e){self._patch({show_status:e.target.checked});}}></ha-switch><span>${T("show_status")}</span></label><label class="toggle-row"><ha-switch .checked=${this._config.show_pixels??true} @change=${function(e){self._patch({show_pixels:e.target.checked});}}></ha-switch><span>${T("show_pixels")}</span></label><div class="section-divider"></div><div class="section-head sub"><span>${T("general")}</span></div><label class="text-row"><span class="text-label">${T("title")}</span><input type="text" class="text-input" placeholder="${T("card_title")}" .value=${this._config.title||""} @input=${function(e){self._patch({title:e.target.value});}} /></label></div>`;
   }
 };
 PLEditor.styles=a`
@@ -39,8 +51,6 @@ PLEditor.styles=a`
 .number-label{color:var(--primary-text-color);}
 .number-input{width:80px;padding:6px 8px;border-radius:6px;border:1px solid var(--divider-color);background:var(--card-background-color);color:var(--primary-text-color);font-size:14px;text-align:right;}
 .number-input:focus{outline:none;border-color:var(--primary-color);}
-.row{display:flex;gap:8px;align-items:center;}
-.row>*{flex:1;}
 .toggle-row{display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer;padding:2px 0;}
 `;
 e([pe({attribute:false})],PLEditor.prototype,"hass",void 0);
@@ -54,10 +64,11 @@ let PixelItLiveviewCard=class extends re{
   getGridOptions(){return{columns:12,rows:"auto",min_columns:4,min_rows:2};}
   static getConfigElement(){return document.createElement(EDITOR_TAG);}
   static getStubConfig(hass){
-    const entity=Object.values(hass?.entities??{}).find(
+    const sensors=Object.values(hass?.entities??{}).filter(
       entry=>entry.platform==="pixelit_liveview"&&hass.states?.[entry.entity_id]
-    )?.entity_id;
-    return{type:CARD_TYPE,title:"",entity:entity??"sensor.pixelit_liveview",width:32,height:8,gap:1,show_header:true,show_status:true,show_pixels:true};
+    );
+    const entity=sensors.length===1?sensors[0].entity_id:"";
+    return{type:CARD_TYPE,title:"",entity,gap:1,show_header:true,show_status:true,show_pixels:true};
   }
 
   shouldUpdate(changedProperties){
@@ -112,6 +123,11 @@ let PixelItLiveviewCard=class extends re{
     const title=cfg.title||"PixelIt";
     const hasPixels=data&&data.pixels&&data.pixels.length>0;
     const gridStyle="grid-template-columns:repeat("+width+", 1fr);grid-template-rows:repeat("+height+", 1fr);gap:"+gap+"px;width:100%;";
+    let message;
+    if(!cfg.entity)message=T("no_entity");
+    else if(!data)message=T("missing_entity");
+    else if(!connected&&(!cfg.show_header||!cfg.show_status))message=T("disconnected");
+    else if(connected&&!hasPixels)message=T("no_data");
     const cells=[];
     if(cfg.show_pixels&&data?.pixels){
       for(let y=0;y<height;y++){
@@ -129,7 +145,7 @@ let PixelItLiveviewCard=class extends re{
         }
       }
     }
-    return V`<ha-card class="plc"><div class="plc-inner">${cfg.show_header?V`<div class="plc-header"><span class="plc-title">${title}</span>${cfg.show_status?V`<span class="plc-status ${statusClass}">${statusText}</span>`:W}</div>`:W}${cfg.show_pixels?V`<div class="plc-grid" style="${gridStyle}">${cells}</div>`:W}${!hasPixels?V`<div class="plc-empty">${T("no_data")}</div>`:W}</div></ha-card>`;
+    return V`<ha-card class="plc"><div class="plc-inner">${cfg.show_header?V`<div class="plc-header"><span class="plc-title">${title}</span>${cfg.show_status&&data?V`<span class="plc-status ${statusClass}">${statusText}</span>`:W}</div>`:W}${cfg.show_pixels?V`<div class="plc-grid" style="${gridStyle}">${cells}</div>`:W}${message?V`<div class="plc-empty">${message}</div>`:W}</div></ha-card>`;
   }
 };
 PixelItLiveviewCard.styles=a`
