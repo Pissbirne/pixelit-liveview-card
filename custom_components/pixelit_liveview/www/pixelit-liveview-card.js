@@ -166,5 +166,18 @@ e([ue()],PixelItLiveviewCard.prototype,"_config",void 0);
 PixelItLiveviewCard=e([ce(CARD_NAME)],PixelItLiveviewCard);
 
 window.customCards=window.customCards||[];
-window.customCards.push({type:CARD_NAME,name:"PixelIt Liveview",description:"Zeigt den aktuellen Inhalt eines PixelIt-Displays (über HA-Sensor)",preview:false,configurable:true,show_form_editors:true});
+window.customCards.push({
+  type:CARD_NAME,
+  name:"PixelIt Liveview",
+  description:"Zeigt den aktuellen Inhalt eines PixelIt-Displays (über HA-Sensor)",
+  preview:false,
+  configurable:true,
+  show_form_editors:true,
+  getEntitySuggestion(hass,entityId){
+    if(!entityId.startsWith("sensor.")||hass.entities?.[entityId]?.platform!=="pixelit_liveview"){
+      return null;
+    }
+    return{config:{type:CARD_TYPE,entity:entityId}};
+  }
+});
 export{PixelItLiveviewCard as PixelItLiveviewCard};
